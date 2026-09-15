@@ -1,6 +1,10 @@
-export const API = import.meta.env.VITE_API_URL || (typeof window !== 'undefined'
-  ? `http://${window.location.hostname || 'localhost'}:4000/api`
-  : 'http://localhost:4000/api');
+const rawApiUrl = import.meta.env.VITE_API_URL || '';
+export const API = rawApiUrl
+  ? rawApiUrl.replace(/\/$/, '')
+  : (typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname || 'localhost'}:4000/api`
+      : 'http://localhost:4000/api');
+
 
 export const money = n => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
