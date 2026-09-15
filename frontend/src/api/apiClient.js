@@ -1,6 +1,6 @@
-export const API = typeof window !== 'undefined'
+export const API = import.meta.env.VITE_API_URL || (typeof window !== 'undefined'
   ? `http://${window.location.hostname || 'localhost'}:4000/api`
-  : 'http://localhost:4000/api';
+  : 'http://localhost:4000/api');
 
 export const money = n => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 

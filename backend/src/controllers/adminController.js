@@ -1,254 +1,317 @@
-import { db } from '../config/db.js';
+import Order from '../models/Order.js';
+import Vegetable from '../models/Vegetable.js';
+import Package from '../models/Package.js';
+import User from '../models/User.js';
+import Branch from '../models/Branch.js';
+import StoreSetting from '../models/StoreSetting.js';
+import Notification from '../models/Notification.js';
 
-export function getStats(req, res) {
-  const todayStr = new Date().toISOString().slice(0, 10);
+export async function getStats(req, res) {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
 
-  const totalRevenue = db.prepare("SELECT COALESCE(SUM(total), 0) total FROM orders WHERE status != 'Cancelled'").get().total;
-  const todayRevenue = db.prepare("SELECT COALESCE(SUM(total), 0) total FROM orders WHERE status != 'Cancelled' AND created_at LIKE ?").get(`${todayStr}%`).total;
-  
-  const totalOrders = db.prepare('SELECT COUNT(*) c FROM orders').get().c;
-  const todayOrders = db.prepare('SELECT COUNT(*) c FROM orders WHERE created_at LIKE ?').get(`${todayStr}%`).c;
-  const pendingOrders = db.prepare("SELECT COUNT(*) c FROM orders WHERE status IN ('New','Confirmed','Preparing')").get().c;
-  const deliveredOrders = db.prepare("SELECT COUNT(*) c FROM orders WHERE status='Delivered'").get().c;
+    const revAgg = await Order.aggregate([
+      { $match: { status: { $ne: 'Cancelled' } } },
+      { $group: { _id: null, total: { $sum: '$total' } } }
+    ]);
+    const totalRevenue = revAgg[0]?.total || 0;
 
-  const totalVegetables = db.prepare('SELECT COUNT(*) c FROM vegetables').get().c;
-  const activeProducts = db.prepare("SELECT COUNT(*) c FROM vegetables WHERE availability='Available' AND stock > 0").get().c;
-  const outOfStockProducts = db.prepare("SELECT COUNT(*) c FROM vegetables WHERE availability='Out of Stock' OR stock <= 0").get().c;
-  const unavailableProducts = db.prepare("SELECT COUNT(*) c FROM vegetables WHERE availability='Temporarily Unavailable'").get().c;
-  const totalPackages = db.prepare('SELECT COUNT(*) c FROM packages WHERE active=1').get().c;
-  const totalCustomers = db.prepare("SELECT COUNT(*) c FROM users WHERE role='customer'").get().c;
-  const totalBranches = db.prepare("SELECT COUNT(*) c FROM branches").get().c;
+    const todayRevAgg = await Order.aggregate([
+      { $match: { status: { $ne: 'Cancelled' }, createdAt: { $gte: todayStart } } },
+      { $group: { _id: null, total: { $sum: '$total' } } }
+    ]);
+    const todayRevenue = todayRevAgg[0]?.total || 0;
 
-  const topSelling = db.prepare(`
-    SELECT name_snapshot as name, SUM(quantity) as total_qty, SUM(price * quantity) as total_sales
-    FROM order_items 
-    WHERE item_type = 'vegetable' 
-    GROUP BY name_snapshot 
-    ORDER BY total_qty DESC 
-    LIMIT 5
-  `).all();
+    const totalOrders = await Order.countDocuments();
+    const todayOrders = await Order.countDocuments({ createdAt: { $gte: todayStart } });
+    const pendingOrders = await Order.countDocuments({ status: { $in: ['New', 'Confirmed', 'Preparing'] } });
+    const deliveredOrders = await Order.countDocuments({ status: 'Delivered' });
 
-  res.json({
-    totalRevenue,
-    todayRevenue,
-    totalOrders,
-    todayOrders,
-    pendingOrders,
-    deliveredOrders,
-    totalVegetables,
-    activeProducts,
-    outOfStockProducts,
-    unavailableProducts,
-    totalPackages,
-    totalCustomers,
-    totalBranches,
-    topSelling
-  });
-}
-
-export function getAdminOrders(req, res) {
-  const orders = db.prepare('SELECT * FROM orders ORDER BY id DESC').all();
-  const getItems = db.prepare(`
-    SELECT oi.*, COALESCE(v.image, p.image, '') as image 
-    FROM order_items oi 
-    LEFT JOIN vegetables v ON v.id = oi.vegetable_id 
-    LEFT JOIN packages p ON p.id = oi.package_id 
-    WHERE oi.order_id = ?
-  `);
-  const getChoices = db.prepare('SELECT * FROM customized_package_items WHERE order_item_id = ?');
-
-  const fullOrders = orders.map(o => {
-    const items = getItems.all(o.id).map(item => {
-      if (item.item_type === 'package') {
-        return {
-          ...item,
-          customized_items: getChoices.all(item.id)
-        };
-      }
-      return item;
+    const totalVegetables = await Vegetable.countDocuments();
+    const activeProducts = await Vegetable.countDocuments({ availability: 'Available', stock: { $gt: 0 } });
+    const outOfStockProducts = await Vegetable.countDocuments({
+      $or: [{ availability: 'Out of Stock' }, { stock: { $lte: 0 } }]
     });
-    return {
-      ...o,
-      tracking_updates: JSON.parse(o.tracking_updates || '[]'),
-      items
-    };
-  });
+    const unavailableProducts = await Vegetable.countDocuments({ availability: 'Temporarily Unavailable' });
+    const totalPackages = await Package.countDocuments({ active: true });
+    const totalCustomers = await User.countDocuments({ role: 'customer' });
+    const totalBranches = await Branch.countDocuments();
 
-  res.json(fullOrders);
-}
+    const topSelling = await Order.aggregate([
+      { $unwind: '$items' },
+      { $match: { 'items.item_type': 'vegetable' } },
+      {
+        $group: {
+          _id: '$items.name_snapshot',
+          name: { $first: '$items.name_snapshot' },
+          total_qty: { $sum: '$items.quantity' },
+          total_sales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }
+        }
+      },
+      { $sort: { total_qty: -1 } },
+      { $limit: 5 }
+    ]);
 
-export function updateOrderStatus(req, res) {
-  const { status, note } = req.body;
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
-  if (!order) return res.status(404).json({ error: 'Order not found' });
-
-  const existingTracking = JSON.parse(order.tracking_updates || '[]');
-  const newTracking = [...existingTracking, {
-    status: status || order.status,
-    note: note || `Order status updated to ${status || order.status}`,
-    time: new Date().toISOString()
-  }];
-
-  db.prepare('UPDATE orders SET status = ?, tracking_updates = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-    .run(status || order.status, JSON.stringify(newTracking), req.params.id);
-
-  res.json({ success: true, message: `Order status updated to ${status || order.status}` });
-}
-
-export function createVegetable(req, res) {
-  const { name, category_id, description, price, unit = 'kg', stock = 50, availability = 'Available', featured = 0, discount = 0, image } = req.body;
-  if (!name || price === undefined) return res.status(400).json({ error: 'Vegetable name and price are required' });
-  if (!image || !image.trim()) return res.status(400).json({ error: 'Product image is mandatory. Please upload an image file or provide an image URL.' });
-
-  const r = db.prepare(`
-    INSERT INTO vegetables (name, category_id, description, price, unit, stock, availability, featured, discount, image)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(name, category_id || 1, description || '', price, unit, stock, availability, featured ? 1 : 0, discount, image.trim());
-
-  res.json({ success: true, id: r.lastInsertRowid });
-}
-
-export function updateVegetable(req, res) {
-  const { name, category_id, description, price, unit, stock, availability, featured, discount, image } = req.body;
-  const v = db.prepare('SELECT * FROM vegetables WHERE id = ?').get(req.params.id);
-  if (!v) return res.status(404).json({ error: 'Vegetable not found' });
-
-  if (image !== undefined && (!image || !image.trim())) {
-    return res.status(400).json({ error: 'Product image cannot be empty. Please upload an image file or URL.' });
+    res.json({
+      totalRevenue,
+      todayRevenue,
+      totalOrders,
+      todayOrders,
+      pendingOrders,
+      deliveredOrders,
+      totalVegetables,
+      activeProducts,
+      outOfStockProducts,
+      unavailableProducts,
+      totalPackages,
+      totalCustomers,
+      totalBranches,
+      topSelling
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  db.prepare(`
-    UPDATE vegetables SET
-      name = COALESCE(?, name),
-      category_id = COALESCE(?, category_id),
-      description = COALESCE(?, description),
-      price = COALESCE(?, price),
-      unit = COALESCE(?, unit),
-      stock = COALESCE(?, stock),
-      availability = COALESCE(?, availability),
-      featured = COALESCE(?, featured),
-      discount = COALESCE(?, discount),
-      image = COALESCE(?, image),
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-  `).run(
-    name, category_id, description, price, unit, stock, availability,
-    featured !== undefined ? (featured ? 1 : 0) : undefined,
-    discount, image ? image.trim() : undefined, req.params.id
-  );
-
-  res.json({ success: true });
 }
 
-export function deleteVegetable(req, res) {
-  db.prepare('DELETE FROM vegetables WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
-}
-
-export function getAdminPackages(req, res) {
-  const packages = db.prepare('SELECT * FROM packages ORDER BY id DESC').all();
-  const getDefaults = db.prepare('SELECT vegetable_id FROM package_default_items WHERE package_id = ?');
-  const getCustoms = db.prepare('SELECT vegetable_id FROM package_customizable_items WHERE package_id = ?');
-
-  const full = packages.map(p => ({
-    ...p,
-    default_items: getDefaults.all(p.id).map(x => x.vegetable_id),
-    customizable_items: getCustoms.all(p.id).map(x => x.vegetable_id)
-  }));
-  res.json(full);
-}
-
-export function createPackage(req, res) {
-  const { name, price, total_items = 5, default_items = 2, description, image, active = 1, default_vegetable_ids = [], customizable_vegetable_ids = [] } = req.body;
-  if (!name || !price) return res.status(400).json({ error: 'Package name and price are required' });
-
-  const r = db.prepare(`
-    INSERT INTO packages(name, price, total_items, default_items, description, image, active)
-    VALUES(?,?,?,?,?,?,?)
-  `).run(name, price, total_items, default_items, description || '', image || '', active ? 1 : 0);
-
-  const pkgId = r.lastInsertRowid;
-  const insDef = db.prepare('INSERT INTO package_default_items(package_id, vegetable_id) VALUES(?,?)');
-  const insCust = db.prepare('INSERT INTO package_customizable_items(package_id, vegetable_id) VALUES(?,?)');
-
-  for (const vid of default_vegetable_ids) insDef.run(pkgId, vid);
-  for (const vid of customizable_vegetable_ids) insCust.run(pkgId, vid);
-
-  res.json({ success: true, id: pkgId });
-}
-
-export function updatePackage(req, res) {
-  const { name, price, total_items, default_items, description, image, active, default_vegetable_ids, customizable_vegetable_ids } = req.body;
-  const pkgId = req.params.id;
-
-  db.prepare(`
-    UPDATE packages SET
-      name = COALESCE(?, name),
-      price = COALESCE(?, price),
-      total_items = COALESCE(?, total_items),
-      default_items = COALESCE(?, default_items),
-      description = COALESCE(?, description),
-      image = COALESCE(?, image),
-      active = COALESCE(?, active)
-    WHERE id = ?
-  `).run(name, price, total_items, default_items, description, image, active !== undefined ? (active ? 1 : 0) : undefined, pkgId);
-
-  if (Array.isArray(default_vegetable_ids)) {
-    db.prepare('DELETE FROM package_default_items WHERE package_id = ?').run(pkgId);
-    const insDef = db.prepare('INSERT INTO package_default_items(package_id, vegetable_id) VALUES(?,?)');
-    for (const vid of default_vegetable_ids) insDef.run(pkgId, vid);
+export async function getAdminOrders(req, res) {
+  try {
+    const orders = await Order.find().sort({ _id: -1 });
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+}
 
-  if (Array.isArray(customizable_vegetable_ids)) {
-    db.prepare('DELETE FROM package_customizable_items WHERE package_id = ?').run(pkgId);
-    const insCust = db.prepare('INSERT INTO package_customizable_items(package_id, vegetable_id) VALUES(?,?)');
-    for (const vid of customizable_vegetable_ids) insCust.run(pkgId, vid);
+export async function updateOrderStatus(req, res) {
+  try {
+    const { status, note } = req.body;
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+
+    const newStatus = status || order.status;
+    const newNote = note || `Order status updated to ${newStatus}`;
+
+    order.status = newStatus;
+    order.tracking_updates.push({
+      status: newStatus,
+      note: newNote,
+      time: new Date().toISOString()
+    });
+
+    await order.save();
+
+    res.json({ success: true, message: `Order status updated to ${newStatus}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  res.json({ success: true });
 }
 
-export function deletePackage(req, res) {
-  db.prepare('DELETE FROM packages WHERE id = ?').run(req.params.id);
-  db.prepare('DELETE FROM package_default_items WHERE package_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM package_customizable_items WHERE package_id = ?').run(req.params.id);
-  res.json({ success: true });
-}
+export async function createVegetable(req, res) {
+  try {
+    const { name, category_id, description, price, unit = 'kg', stock = 50, availability = 'Available', featured = 0, discount = 0, image } = req.body;
+    if (!name || price === undefined) return res.status(400).json({ error: 'Vegetable name and price are required' });
+    if (!image || !image.trim()) return res.status(400).json({ error: 'Product image is mandatory. Please upload an image file or provide an image URL.' });
 
-export function getAdminBranches(req, res) {
-  res.json(db.prepare('SELECT * FROM branches ORDER BY id ASC').all());
-}
+    const newVeg = await Vegetable.create({
+      name,
+      category_id: category_id || null,
+      description: description || '',
+      price,
+      unit,
+      stock,
+      availability,
+      featured: Boolean(featured),
+      discount: discount || 0,
+      image: image.trim()
+    });
 
-export function createBranch(req, res) {
-  const { name, location, phone, status = 'Active' } = req.body;
-  if (!name || !location) return res.status(400).json({ error: 'Branch name and location are required' });
-  const r = db.prepare('INSERT INTO branches(name, location, phone, status) VALUES(?,?,?,?)').run(name, location, phone || '', status);
-  res.json({ success: true, id: r.lastInsertRowid });
-}
-
-export function deleteBranch(req, res) {
-  db.prepare('DELETE FROM branches WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
-}
-
-export function getAdminSettings(req, res) {
-  const rows = db.prepare('SELECT key, value FROM store_settings').all();
-  res.json(Object.fromEntries(rows.map(x => [x.key, x.value])));
-}
-
-export function saveAdminSettings(req, res) {
-  const upsert = db.prepare('INSERT INTO store_settings(key, value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
-  for (const [k, v] of Object.entries(req.body)) {
-    upsert.run(k, String(v));
+    res.json({ success: true, id: newVeg.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  res.json({ success: true, message: 'Settings saved' });
 }
 
-export function getAdminNotifications(req, res) {
-  res.json(db.prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT 20').all());
+export async function updateVegetable(req, res) {
+  try {
+    const { name, category_id, description, price, unit, stock, availability, featured, discount, image } = req.body;
+    const v = await Vegetable.findById(req.params.id);
+    if (!v) return res.status(404).json({ error: 'Vegetable not found' });
+
+    if (image !== undefined && (!image || !image.trim())) {
+      return res.status(400).json({ error: 'Product image cannot be empty. Please upload an image file or URL.' });
+    }
+
+    if (name !== undefined) v.name = name;
+    if (category_id !== undefined) v.category_id = category_id;
+    if (description !== undefined) v.description = description;
+    if (price !== undefined) v.price = price;
+    if (unit !== undefined) v.unit = unit;
+    if (stock !== undefined) v.stock = stock;
+    if (availability !== undefined) v.availability = availability;
+    if (featured !== undefined) v.featured = Boolean(featured);
+    if (discount !== undefined) v.discount = discount;
+    if (image !== undefined) v.image = image.trim();
+
+    await v.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
-export function getAdminCustomers(req, res) {
-  const users = db.prepare("SELECT id, name, email, role, phone, address, city, pin, created_at FROM users WHERE role='customer' ORDER BY id DESC").all();
-  res.json(users);
+export async function deleteVegetable(req, res) {
+  try {
+    await Vegetable.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
+
+export async function getAdminPackages(req, res) {
+  try {
+    const packages = await Package.find().sort({ _id: -1 });
+    const full = packages.map(p => {
+      const obj = p.toJSON();
+      return {
+        ...obj,
+        default_items: (p.default_vegetable_ids || []).map(id => id.toString()),
+        customizable_items: (p.customizable_vegetable_ids || []).map(id => id.toString())
+      };
+    });
+    res.json(full);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function createPackage(req, res) {
+  try {
+    const { name, price, total_items = 5, default_items = 2, description, image, active = 1, default_vegetable_ids = [], customizable_vegetable_ids = [] } = req.body;
+    if (!name || !price) return res.status(400).json({ error: 'Package name and price are required' });
+
+    const pkg = await Package.create({
+      name,
+      price,
+      total_items,
+      default_items,
+      description: description || '',
+      image: image || '',
+      active: Boolean(active),
+      default_vegetable_ids,
+      customizable_vegetable_ids
+    });
+
+    res.json({ success: true, id: pkg.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function updatePackage(req, res) {
+  try {
+    const { name, price, total_items, default_items, description, image, active, default_vegetable_ids, customizable_vegetable_ids } = req.body;
+    const pkg = await Package.findById(req.params.id);
+    if (!pkg) return res.status(404).json({ error: 'Package not found' });
+
+    if (name !== undefined) pkg.name = name;
+    if (price !== undefined) pkg.price = price;
+    if (total_items !== undefined) pkg.total_items = total_items;
+    if (default_items !== undefined) pkg.default_items = default_items;
+    if (description !== undefined) pkg.description = description;
+    if (image !== undefined) pkg.image = image;
+    if (active !== undefined) pkg.active = Boolean(active);
+    if (Array.isArray(default_vegetable_ids)) pkg.default_vegetable_ids = default_vegetable_ids;
+    if (Array.isArray(customizable_vegetable_ids)) pkg.customizable_vegetable_ids = customizable_vegetable_ids;
+
+    await pkg.save();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deletePackage(req, res) {
+  try {
+    await Package.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getAdminBranches(req, res) {
+  try {
+    const branches = await Branch.find().sort({ _id: 1 });
+    res.json(branches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function createBranch(req, res) {
+  try {
+    const { name, location, phone, status = 'Active' } = req.body;
+    if (!name || !location) return res.status(400).json({ error: 'Branch name and location are required' });
+
+    const branch = await Branch.create({
+      name,
+      location,
+      phone: phone || '',
+      status
+    });
+
+    res.json({ success: true, id: branch.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteBranch(req, res) {
+  try {
+    await Branch.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getAdminSettings(req, res) {
+  try {
+    const settings = await StoreSetting.find();
+    res.json(Object.fromEntries(settings.map(x => [x.key, x.value])));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function saveAdminSettings(req, res) {
+  try {
+    for (const [k, v] of Object.entries(req.body)) {
+      await StoreSetting.updateOne({ key: k }, { key: k, value: String(v) }, { upsert: true });
+    }
+    res.json({ success: true, message: 'Settings saved' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getAdminNotifications(req, res) {
+  try {
+    const notifications = await Notification.find().sort({ _id: -1 }).limit(20);
+    res.json(notifications);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getAdminCustomers(req, res) {
+  try {
+    const users = await User.find({ role: 'customer' }).select('-password_hash').sort({ _id: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+

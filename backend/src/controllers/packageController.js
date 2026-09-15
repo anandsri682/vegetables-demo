@@ -1,46 +1,43 @@
-import { db } from '../config/db.js';
+import Package from '../models/Package.js';
 
-export function getPackages(req, res) {
-  const packages = db.prepare('SELECT * FROM packages WHERE active = 1 ORDER BY price ASC').all();
-  const getDefaultVegs = db.prepare(`
-    SELECT v.* FROM vegetables v 
-    JOIN package_default_items pdi ON pdi.vegetable_id = v.id 
-    WHERE pdi.package_id = ?
-  `);
-  const getCustomVegs = db.prepare(`
-    SELECT v.* FROM vegetables v 
-    JOIN package_customizable_items pci ON pci.vegetable_id = v.id 
-    WHERE pci.package_id = ?
-  `);
+export async function getPackages(req, res) {
+  try {
+    const packages = await Package.find({ active: true })
+      .populate('default_vegetable_ids')
+      .populate('customizable_vegetable_ids')
+      .sort({ price: 1 });
 
-  const result = packages.map(p => ({
-    ...p,
-    defaultVegetables: getDefaultVegs.all(p.id),
-    customizableVegetables: getCustomVegs.all(p.id)
-  }));
+    const result = packages.map(p => {
+      const obj = p.toJSON();
+      return {
+        ...obj,
+        defaultVegetables: (p.default_vegetable_ids || []).map(v => v.toJSON ? v.toJSON() : v),
+        customizableVegetables: (p.customizable_vegetable_ids || []).map(v => v.toJSON ? v.toJSON() : v)
+      };
+    });
 
-  res.json(result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
-export function getPackageById(req, res) {
-  const p = db.prepare('SELECT * FROM packages WHERE id = ? AND active = 1').get(req.params.id);
-  if (!p) return res.status(404).json({ error: 'Package not found' });
+export async function getPackageById(req, res) {
+  try {
+    const p = await Package.findOne({ _id: req.params.id, active: true })
+      .populate('default_vegetable_ids')
+      .populate('customizable_vegetable_ids');
 
-  const defaultVegetables = db.prepare(`
-    SELECT v.* FROM vegetables v 
-    JOIN package_default_items pdi ON pdi.vegetable_id = v.id 
-    WHERE pdi.package_id = ?
-  `).all(p.id);
+    if (!p) return res.status(404).json({ error: 'Package not found' });
 
-  const customizableVegetables = db.prepare(`
-    SELECT v.* FROM vegetables v 
-    JOIN package_customizable_items pci ON pci.vegetable_id = v.id 
-    WHERE pci.package_id = ?
-  `).all(p.id);
-
-  res.json({
-    ...p,
-    defaultVegetables,
-    customizableVegetables
-  });
+    const obj = p.toJSON();
+    res.json({
+      ...obj,
+      defaultVegetables: (p.default_vegetable_ids || []).map(v => v.toJSON ? v.toJSON() : v),
+      customizableVegetables: (p.customizable_vegetable_ids || []).map(v => v.toJSON ? v.toJSON() : v)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
+

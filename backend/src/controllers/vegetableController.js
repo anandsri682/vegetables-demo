@@ -1,25 +1,47 @@
-import { db } from '../config/db.js';
+import Vegetable from '../models/Vegetable.js';
+import Category from '../models/Category.js';
+import Branch from '../models/Branch.js';
+import StoreSetting from '../models/StoreSetting.js';
 
-export function getVegetables(req, res) {
-  const rows = db.prepare(`
-    SELECT v.*, c.name category_name 
-    FROM vegetables v 
-    LEFT JOIN categories c ON c.id = v.category_id 
-    ORDER BY v.name ASC
-  `).all();
-  res.json(rows);
+export async function getVegetables(req, res) {
+  try {
+    const vegs = await Vegetable.find().populate('category_id', 'name').sort({ name: 1 });
+    const formatted = vegs.map(v => {
+      const obj = v.toJSON();
+      obj.category_name = v.category_id?.name || obj.category_name || '';
+      return obj;
+    });
+    res.json(formatted);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
-export function getCategories(req, res) {
-  res.json(db.prepare('SELECT * FROM categories ORDER BY name ASC').all());
+export async function getCategories(req, res) {
+  try {
+    const categories = await Category.find().sort({ name: 1 });
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
-export function getBranches(req, res) {
-  res.json(db.prepare("SELECT * FROM branches WHERE status='Active' ORDER BY id ASC").all());
+export async function getBranches(req, res) {
+  try {
+    const branches = await Branch.find({ status: 'Active' }).sort({ _id: 1 });
+    res.json(branches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
 
-export function getSettings(req, res) {
-  const settings = db.prepare('SELECT key, value FROM store_settings').all();
-  const obj = Object.fromEntries(settings.map(s => [s.key, s.value]));
-  res.json(obj);
+export async function getSettings(req, res) {
+  try {
+    const settings = await StoreSetting.find();
+    const obj = Object.fromEntries(settings.map(s => [s.key, s.value]));
+    res.json(obj);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 }
+
