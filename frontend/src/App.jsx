@@ -20,6 +20,8 @@ import UserOrderDetailPage from './pages/UserOrderDetailPage';
 import UserAddressesPage from './pages/UserAddressesPage';
 import UserSettingsPage from './pages/UserSettingsPage';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
+import CustomizePackagePage from './pages/CustomizePackagePage';
+
 
 export default function App() {
   const location = useLocation();
@@ -176,9 +178,18 @@ export default function App() {
             <UserAddressesPage user={user} />
           } />
 
+          <Route path="/packages/:id/customize" element={
+            <CustomizePackagePage onAddToCart={item => setCart(c => [...c, item])} showNotice={showNotice} />
+          } />
+
+          <Route path="/package/:id/customize" element={
+            <CustomizePackagePage onAddToCart={item => setCart(c => [...c, item])} showNotice={showNotice} />
+          } />
+
           <Route path="/settings" element={
             <UserSettingsPage user={user} onUpdated={u => setUser(u)} onLogout={handleLogout} />
           } />
+
 
           <Route path="/admin/*" element={
             <AdminDashboardPage

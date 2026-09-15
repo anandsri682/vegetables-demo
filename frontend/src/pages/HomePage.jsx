@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sparkles, Box, Plus, Minus, Check, Truck, ShieldCheck, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { money, getImageUrl, FALLBACK_VEG_IMG, FALLBACK_PKG_IMG } from '../api/apiClient';
+
 
 const HERO_SLIDES = [
   {
@@ -28,7 +30,9 @@ const HERO_SLIDES = [
 ];
 
 export default function HomePage({ veg, categories, packages, cart, setCart, search, cat, setCat, addVeg, onSelectPackage }) {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
+
 
   // Auto slide hero banner every 4 seconds
   useEffect(() => {
@@ -191,9 +195,10 @@ export default function HomePage({ veg, categories, packages, cart, setCart, sea
                       <small className="muted">Package Specs: <b>{p.total_items} Items Total</b> ({p.default_items} Fixed Defaults)</small>
                     )}
                   </div>
-                  <button className="btn-primary full-width" onClick={() => onSelectPackage(p)} style={{ marginTop: 'auto' }}>
+                  <button className="btn-primary full-width" onClick={() => navigate(`/packages/${p.id}/customize`)} style={{ marginTop: 'auto' }}>
                     Build & Customize Package &rarr;
                   </button>
+
                 </div>
               </div>
             ))}

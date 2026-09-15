@@ -13,11 +13,13 @@ import AdminBranchesTab from './AdminBranchesTab';
 import AdminCustomersTab from './AdminCustomersTab';
 import AdminSettingsTab from './AdminSettingsTab';
 import AdminNotificationsTab from './AdminNotificationsTab';
+import AdminOrderManagementView from './AdminOrderManagementView';
 
-export default function AdminDashboardPage({ user, refreshMainData, onViewInvoice, onViewLabel, onLogout, onViewOrderDetails }) {
+export default function AdminDashboardPage({ user, refreshMainData, onViewInvoice, onViewLabel, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [showMoreModal, setShowMoreModal] = useState(false);
+  const [selectedOrderForAdmin, setSelectedOrderForAdmin] = useState(null);
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [vegs, setVegs] = useState([]);
@@ -26,6 +28,7 @@ export default function AdminDashboardPage({ user, refreshMainData, onViewInvoic
   const [customers, setCustomers] = useState([]);
   const [settings, setSettings] = useState({});
   const [notifications, setNotifications] = useState([]);
+
 
   // Sync current active tab with URL path
   const getTabFromPath = path => {
@@ -202,74 +205,87 @@ export default function AdminDashboardPage({ user, refreshMainData, onViewInvoic
 
         {/* Body Content */}
         <div className="freshcart-admin-body">
-          {tab === 'overview' && (
-            <AdminOverviewTab
-              stats={stats}
-              orders={orders}
-              vegs={vegs}
-              customers={customers}
-              onViewOrderDetails={onViewOrderDetails}
+          {selectedOrderForAdmin ? (
+            <AdminOrderManagementView
+              order={selectedOrderForAdmin}
+              onClose={() => setSelectedOrderForAdmin(null)}
+              refreshAdminData={loadAdminData}
               onViewInvoice={onViewInvoice}
               onViewLabel={onViewLabel}
             />
-          )}
+          ) : (
+            <>
+              {tab === 'overview' && (
+                <AdminOverviewTab
+                  stats={stats}
+                  orders={orders}
+                  vegs={vegs}
+                  customers={customers}
+                  onViewOrderDetails={o => setSelectedOrderForAdmin(o)}
+                  onViewInvoice={onViewInvoice}
+                  onViewLabel={onViewLabel}
+                />
+              )}
 
-          {tab === 'vegetables' && (
-            <AdminVegetablesTab
-              vegs={vegs}
-              categories={[]}
-              refreshAdminData={loadAdminData}
-            />
-          )}
+              {tab === 'vegetables' && (
+                <AdminVegetablesTab
+                  vegs={vegs}
+                  categories={[]}
+                  refreshAdminData={loadAdminData}
+                />
+              )}
 
-          {tab === 'orders' && (
-            <AdminOrdersTab
-              orders={orders}
-              refreshAdminData={loadAdminData}
-              onViewOrderDetails={onViewOrderDetails}
-              onViewInvoice={onViewInvoice}
-              onViewLabel={onViewLabel}
-            />
-          )}
+              {tab === 'orders' && (
+                <AdminOrdersTab
+                  orders={orders}
+                  refreshAdminData={loadAdminData}
+                  onViewOrderDetails={o => setSelectedOrderForAdmin(o)}
+                  onViewInvoice={onViewInvoice}
+                  onViewLabel={onViewLabel}
+                />
+              )}
 
-          {tab === 'packages' && (
-            <AdminPackagesTab
-              packages={packages}
-              vegs={vegs}
-              refreshAdminData={loadAdminData}
-            />
-          )}
+              {tab === 'packages' && (
+                <AdminPackagesTab
+                  packages={packages}
+                  vegs={vegs}
+                  refreshAdminData={loadAdminData}
+                />
+              )}
 
-          {tab === 'branches' && (
-            <AdminBranchesTab
-              branches={branches}
-              refreshAdminData={loadAdminData}
-            />
-          )}
+              {tab === 'branches' && (
+                <AdminBranchesTab
+                  branches={branches}
+                  refreshAdminData={loadAdminData}
+                />
+              )}
 
-          {tab === 'customers' && (
-            <AdminCustomersTab
-              customers={customers}
-              orders={orders}
-              onViewOrderDetails={onViewOrderDetails}
-              onViewInvoice={onViewInvoice}
-              onViewLabel={onViewLabel}
-            />
-          )}
+              {tab === 'customers' && (
+                <AdminCustomersTab
+                  customers={customers}
+                  orders={orders}
+                  onViewOrderDetails={o => setSelectedOrderForAdmin(o)}
+                  onViewInvoice={onViewInvoice}
+                  onViewLabel={onViewLabel}
+                />
+              )}
 
-          {tab === 'settings' && (
-            <AdminSettingsTab
-              settings={settings}
-              refreshAdminData={loadAdminData}
-            />
-          )}
+              {tab === 'settings' && (
+                <AdminSettingsTab
+                  settings={settings}
+                  refreshAdminData={loadAdminData}
+                />
+              )}
 
-          {tab === 'notifications' && (
-            <AdminNotificationsTab
-              notifications={notifications}
-            />
+              {tab === 'notifications' && (
+                <AdminNotificationsTab
+                  notifications={notifications}
+                />
+              )}
+            </>
           )}
         </div>
+
       </div>
 
       {/* Fixed Mobile Bottom Navigation Bar */}

@@ -30,9 +30,19 @@ export default function MobileNav({ cartCount, user }) {
         <MapPin size={18} /> <span>Address</span>
       </button>
 
-      <button className={activePath === '/profile' || activePath === '/user' || activePath === '/settings' ? 'admin-bottom-item active' : 'admin-bottom-item'} onClick={() => navigate(user ? '/profile' : '/login')}>
+      <button
+        className={activePath === '/profile' || activePath === '/user' || activePath === '/settings' || activePath.startsWith('/admin') ? 'admin-bottom-item active' : 'admin-bottom-item'}
+        onClick={() => {
+          if (user?.role === 'admin') {
+            navigate('/admin');
+          } else {
+            navigate(user ? '/profile' : '/login');
+          }
+        }}
+      >
         <User size={18} /> <span>Profile</span>
       </button>
+
     </nav>
   );
 }
