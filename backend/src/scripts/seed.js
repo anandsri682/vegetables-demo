@@ -104,7 +104,7 @@ export async function seedDatabase() {
   const branchCount = await Branch.countDocuments();
   if (branchCount === 0) {
     await Branch.create({
-      name: "Jamalpur's Central Warehouse",
+      name: "RRV Trades Central Warehouse",
       location: '123 Market Road, Freshville',
       phone: '+91 98765 43210',
       status: 'Active'
@@ -114,7 +114,8 @@ export async function seedDatabase() {
 
   // 6. Seed Store Settings
   const settings = [
-    { key: 'store_name', value: "Jamalpur's Market" },
+    { key: 'store_name', value: "RRV Trades Market" },
+
     { key: 'support_email', value: 'support@jamalpurs.local' },
     { key: 'contact_number', value: '+91 98765 43210' },
     { key: 'delivery_radius', value: '15 km' }

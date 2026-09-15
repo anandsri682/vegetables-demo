@@ -34,7 +34,8 @@ export default function UserSettingsPage({ user, onUpdated, onLogout }) {
         method: 'DELETE',
         body: JSON.stringify({ password: deletePassword })
       });
-      if (confirm("Are you confirming to delete your Jamalpur's account permanently?")) {
+      if (confirm("Are you confirming to delete your RRV Trades account permanently?")) {
+
         alert("Your account has been deleted.");
         onLogout();
         navigate('/');

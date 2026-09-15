@@ -107,9 +107,9 @@ export default function AdminDashboardPage({ user, refreshMainData, onViewInvoic
       {/* Mobile Top Header */}
       <header className="freshcart-admin-mobile-header mobile-only">
         <div className="mobile-header-brand" onClick={() => navigate('/')} style={{ textDecoration: 'none' }}>
-          <img src="/logo.png" alt="Jamalpur's" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+          <img src="/logo.png" alt="RRV Trades" style={{ width: 24, height: 24, objectFit: 'contain' }} />
           <div className="mobile-header-titles">
-            <span className="mobile-app-title" style={{ textDecoration: 'none' }}>Jamalpur's Market</span>
+            <span className="mobile-app-title" style={{ textDecoration: 'none' }}>RRV Trades Market</span>
             <span className="mobile-app-badge">Admin Panel</span>
           </div>
         </div>
@@ -132,13 +132,14 @@ export default function AdminDashboardPage({ user, refreshMainData, onViewInvoic
       <aside className="freshcart-admin-sidebar desktop-only">
         <div className="admin-sidebar-header" onClick={() => navigate('/')} style={{ textDecoration: 'none', cursor: 'pointer' }}>
           <div className="admin-brand-icon">
-            <img src="/logo.png" alt="Jamalpur's" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="RRV Trades" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           </div>
           <div>
-            <div className="admin-brand-title" style={{ textDecoration: 'none' }}>Jamalpur's Market</div>
+            <div className="admin-brand-title" style={{ textDecoration: 'none' }}>RRV Trades Market</div>
             <div className="admin-brand-sub" style={{ textDecoration: 'none' }}>VEGETABLE STORE ADMIN</div>
           </div>
         </div>
+
 
         <nav className="admin-sidebar-nav">
           <Link to="/admin" className={tab === 'overview' ? 'admin-nav-link active' : 'admin-nav-link'} style={{ textDecoration: 'none' }}>

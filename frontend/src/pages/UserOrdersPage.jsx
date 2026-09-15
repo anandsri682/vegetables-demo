@@ -21,7 +21,8 @@ export default function UserOrdersPage({ user, onViewInvoice }) {
   }, [user]);
 
   const filteredOrders = orders.filter(o => {
-    const d = new Date(o.created_at);
+    const rawDate = o.createdAt || o.created_at || Date.now();
+    const d = new Date(rawDate);
     const now = new Date();
     if (orderFilter === '30days') return (now - d) <= 30 * 24 * 60 * 60 * 1000;
     if (orderFilter === '12weeks') return (now - d) <= 12 * 7 * 24 * 60 * 60 * 1000;
@@ -29,6 +30,7 @@ export default function UserOrdersPage({ user, onViewInvoice }) {
     if (orderFilter === '1year') return (now - d) <= 365 * 24 * 60 * 60 * 1000;
     return true;
   });
+
 
   return (
     <div className="ref-orders-container page-container margin-top">
@@ -71,7 +73,8 @@ export default function UserOrdersPage({ user, onViewInvoice }) {
                   <div className="ref-meta-item">
                     <span className="ref-meta-label">Order Date :</span>
                     <span className="ref-meta-val">
-                      {new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      {new Date(o.createdAt || o.created_at || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+
                     </span>
                   </div>
                   <div className="ref-meta-item">

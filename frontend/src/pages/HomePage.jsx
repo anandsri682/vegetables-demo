@@ -5,7 +5,8 @@ import { money, getImageUrl, FALLBACK_VEG_IMG, FALLBACK_PKG_IMG } from '../api/a
 const HERO_SLIDES = [
   {
     badge: '100% ORGANIC & LOCAL FARM PRODUCE',
-    title: 'Jamalpur\'s Fresh Vegetable Store',
+    title: 'RRV Trades Fresh Vegetable Store',
+
     sub: 'Directly harvested from local Telangana & Andhra farms. Guaranteed fresh arrival within 2 hours at your doorstep.',
     img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=700&q=80',
     tag: 'Daily Fresh Harvest'

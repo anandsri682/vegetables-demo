@@ -21,7 +21,8 @@ export default function AdminOverviewTab({ stats, orders, vegs, customers, onVie
   return (
     <div className="admin-overview-tab">
       <div className="overview-header">
-        <h2>Jamalpur's Store Overview & Analytics</h2>
+        <h2>RRV Trades Store Overview & Analytics</h2>
+
         <p>Real-time analytics for vegetables, customer orders, revenue, and inventory status.</p>
       </div>
 

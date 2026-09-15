@@ -64,10 +64,11 @@ export default function AuthPage({ user, onLoginSuccess }) {
     <div className="page-container narrow margin-top" style={{ maxWidth: '440px', margin: '40px auto' }}>
       <div className="card-box" style={{ padding: '32px 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <img src="/logo.png" alt="Jamalpur's Logo" style={{ width: 44, height: 44, margin: '0 auto 8px auto' }} />
+          <img src="/logo.png" alt="RRV Trades Logo" style={{ width: 44, height: 44, margin: '0 auto 8px auto' }} />
           <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '4px 0' }}>
-            {mode === 'login' ? 'Sign In to Jamalpur\'s' : 'Create Account'}
+            {mode === 'login' ? 'Sign In to RRV Trades' : 'Create Account'}
           </h2>
+
           <p className="muted" style={{ fontSize: '0.85rem' }}>
             {mode === 'login' ? 'Access your orders, saved addresses & tax invoices' : 'Register for express 2-hr vegetable delivery'}
           </p>

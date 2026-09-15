@@ -4,7 +4,8 @@ import { ShoppingCart, Search, User, ShieldCheck, LogOut } from 'lucide-react';
 
 export default function Header({ cartCount, user, search, setSearch, onLogout, settings = {} }) {
   const navigate = useNavigate();
-  const storeName = settings.store_name || "Jamalpur's";
+  const storeName = settings.store_name || "RRV Trades";
+
 
   return (
     <header className="main-header">

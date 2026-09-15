@@ -60,7 +60,8 @@ export default function UserOrderDetailPage({ user, onViewInvoice }) {
 
         <div className="page-header" style={{ marginBottom: '20px' }}>
           <h2 style={{ fontSize: '1.6rem', color: '#0f172a', margin: '4px 0' }}>Order Details #{order.id}</h2>
-          <p className="muted" style={{ fontSize: '0.88rem' }}>Placed on {new Date(order.created_at).toLocaleString()}</p>
+          <p className="muted" style={{ fontSize: '0.88rem' }}>Placed on {new Date(order.createdAt || order.created_at || Date.now()).toLocaleString()}</p>
+
         </div>
 
         {/* Live Delivery 5-Stage Tracker Bar */}

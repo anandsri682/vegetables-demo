@@ -53,10 +53,12 @@ const orderSchema = new mongoose.Schema({
     virtuals: true,
     transform: (doc, ret) => {
       ret.id = ret._id ? ret._id.toString() : ret.id;
+      ret.created_at = ret.createdAt || ret.created_at;
       delete ret.__v;
       return ret;
     }
   },
+
   toObject: { virtuals: true }
 });
 

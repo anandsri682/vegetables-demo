@@ -3,7 +3,8 @@ import { api } from '../../api/apiClient';
 
 export default function AdminSettingsTab({ settings, refreshAdminData }) {
   const [form, setForm] = useState({
-    store_name: settings?.store_name || "Jamalpur's Market",
+    store_name: settings?.store_name || "RRV Trades Market",
+
     support_phone: settings?.support_phone || '+91 98765 43210',
     support_email: settings?.support_email || 'support@jamalpurs.local',
     free_delivery_threshold: settings?.free_delivery_threshold || 499

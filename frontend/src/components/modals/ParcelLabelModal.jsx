@@ -20,7 +20,8 @@ export default function ParcelLabelModal({ order, onClose }) {
         <div className="printable-parcel-label" style={{ border: '2px dashed #059669', borderRadius: '12px', padding: '20px', background: '#fff' }}>
           <div className="flex-between align-center" style={{ borderBottom: '1px solid #cbd5e1', paddingBottom: '10px' }}>
             <div>
-              <strong style={{ fontSize: '1.1rem', color: '#059669' }}>Jamalpur's Market</strong><br />
+              <strong style={{ fontSize: '1.1rem', color: '#059669' }}>RRV Trades Market</strong><br />
+
               <small className="muted">Express Vegetable Delivery</small>
             </div>
             <div style={{ textAlign: 'right' }}>

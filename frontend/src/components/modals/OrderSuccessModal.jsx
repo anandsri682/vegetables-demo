@@ -16,7 +16,8 @@ export default function OrderSuccessModal({ orderId, onClose }) {
 
         <h2 style={{ fontSize: '1.6rem', color: '#0f172a', margin: '8px 0' }}>Order Placed Successfully!</h2>
         <p className="muted" style={{ fontSize: '0.95rem', margin: '8px 0 20px 0' }}>
-          Thank you for shopping with <b>Jamalpur's Market</b>! Your order <b>#{orderId}</b> has been received and sent to our local store outlet for packing.
+          Thank you for shopping with <b>RRV Trades Market</b>! Your order <b>#{orderId}</b> has been received and sent to our local store outlet for packing.
+
         </p>
 
         <div className="success-action-btns" style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>

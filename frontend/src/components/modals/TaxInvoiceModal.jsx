@@ -21,16 +21,16 @@ export default function TaxInvoiceModal({ order, onClose }) {
         <div className="printable-invoice-content" id="printable-invoice">
           <div className="invoice-header-row flex-between align-center" style={{ borderBottom: '2px solid #059669', paddingBottom: '16px' }}>
             <div className="flex align-center gap-2">
-              <img src="/logo.png" alt="Jamalpur's" style={{ width: 40, height: 40 }} />
+              <img src="/logo.png" alt="RRV Trades" style={{ width: 40, height: 40 }} />
               <div>
-                <h2 style={{ margin: 0, color: '#059669', fontSize: '1.4rem' }}>Jamalpur's Market</h2>
+                <h2 style={{ margin: 0, color: '#059669', fontSize: '1.4rem' }}>RRV Trades Market</h2>
                 <small className="muted">100% Farm Fresh Vegetables & Budget Packages</small>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <h3 style={{ margin: 0, color: '#0f172a' }}>TAX INVOICE</h3>
               <small>Invoice #: <b>INV-{order.id}</b></small><br />
-              <small>Date: <b>{new Date(order.created_at).toLocaleDateString()}</b></small>
+              <small>Date: <b>{new Date(order.createdAt || order.created_at || Date.now()).toLocaleDateString()}</b></small>
             </div>
           </div>
 
@@ -48,7 +48,7 @@ export default function TaxInvoiceModal({ order, onClose }) {
               <div style={{ textAlign: 'right' }}>
                 <strong>Seller Outlet:</strong>
                 <p style={{ margin: '4px 0' }}>
-                  <b>Jamalpur's Central Warehouse</b><br />
+                  <b>RRV Trades Central Warehouse</b><br />
                   GSTIN: 36AAACJ9988K1Z5<br />
                   Support: +91 98765 43210
                 </p>
@@ -66,35 +66,38 @@ export default function TaxInvoiceModal({ order, onClose }) {
             </div>
           </div>
 
-          <table className="admin-table margin-top" style={{ fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th>#</th>
-                <th>Item Description</th>
-                <th>Qty</th>
-                <th>Unit Price</th>
-                <th style={{ textAlign: 'right' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((it, idx) => (
-                <tr key={it.id}>
-                  <td>{idx + 1}</td>
-                  <td>
-                    <b>{it.name_snapshot}</b>
-                    {it.customized_items && it.customized_items.length > 0 && (
-                      <div style={{ fontSize: '0.75rem', color: '#059669' }}>
-                        Choices: {it.customized_items.map(c => `${c.name_snapshot} (${c.quantity_snapshot || '1 kg'})`).join(', ')}
-                      </div>
-                    )}
-                  </td>
-                  <td>{it.quantity} {it.unit_snapshot}</td>
-                  <td>{money(it.price)}</td>
-                  <td style={{ textAlign: 'right' }}>{money(it.price * it.quantity)}</td>
+          <div style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="admin-table margin-top" style={{ fontSize: '0.85rem', width: '100%', minWidth: '450px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  <th>#</th>
+                  <th>Item Description</th>
+                  <th>Qty</th>
+                  <th>Unit Price</th>
+                  <th style={{ textAlign: 'right' }}>Amount</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {order.items.map((it, idx) => (
+                  <tr key={it.id}>
+                    <td>{idx + 1}</td>
+                    <td>
+                      <b>{it.name_snapshot}</b>
+                      {it.customized_items && it.customized_items.length > 0 && (
+                        <div style={{ fontSize: '0.75rem', color: '#059669' }}>
+                          Choices: {it.customized_items.map(c => `${c.name_snapshot} (${c.quantity_snapshot || '1 kg'})`).join(', ')}
+                        </div>
+                      )}
+                    </td>
+                    <td>{it.quantity} {it.unit_snapshot}</td>
+                    <td>{money(it.price)}</td>
+                    <td style={{ textAlign: 'right' }}>{money(it.price * it.quantity)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
 
           <div className="flex-between margin-top" style={{ fontSize: '0.85rem', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
             <div>
