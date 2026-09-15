@@ -1,9 +1,11 @@
 const rawApiUrl = import.meta.env.VITE_API_URL || '';
+const isLocal = typeof window !== 'undefined' && 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 export const API = rawApiUrl
   ? rawApiUrl.replace(/\/$/, '')
-  : (typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.hostname || 'localhost'}:4000/api`
-      : 'http://localhost:4000/api');
+  : (isLocal ? 'http://localhost:4000/api' : 'https://vegetables-demo-1.onrender.com/api');
+
 
 
 export const money = n => `₹${Number(n || 0).toLocaleString('en-IN')}`;
